@@ -1,9 +1,11 @@
 import speech_recognition as sr
 import datetime
 import math
-import os
+import os, sys, subprocess, webbrowser
 import json
 import cv2 
+import numpy as np
+import sounddevice as sd
 
 class Commando:
     def uitvoering(self):
@@ -37,7 +39,7 @@ def Spraakherkenning():
         except sr.RequestError as e:
             print(f"Fout bij spraakherkenningsservice: {e}")
             return None
-        
+
 # Commando parser functie
 
 def parse_Commando(tekst):
@@ -48,16 +50,24 @@ def parse_Commando(tekst):
         "open calculator": "calc",
         "open browser": "start chrome",
         "open paint": "mspaint",
+        "open steam": "start steam://open/main",
         "open camera": "start microsoft.windows.camera:",
         "open settings": "start ms-settings:",
         "open website": "start https://www.xswim.be",
-        "open school website": "start https://www.vives.be",
+        "open vives": "start https://www.vives.be",
         "open visual studio code": "code",
         "open powershell": "start powershell",
+        "open hyperV": "start virtmgmt.msc",
         "open spotify": "start spotify",
         "open youtube": "start https://www.youtube.com",
         "open chat gpt": "start https://chat.openai.com",
-        "open verkenner": "explorer"
+        "open verkenner": "explorer",
+        "open command prompt": "start cmd",
+        "open repo": "start https://github.com/Sennehrm/AI-spraakbesturing",
+        "open word": "start winword",
+        "open spotify": "start spotify",
+        "open docker": "start docker",
+        "open soundcloud": "start https://soundcloud.com",
     }
     for key in Commando_map:
         if key in tekst:
@@ -69,14 +79,13 @@ def parse_Commando(tekst):
 # Hoofdprogramma
 
 def main():
-    cv2.namedWindow("Spraak Besturingssysteem", cv2.WINDOW_NORMAL,)
     uitgevoerde_commandos = []
     while True:
         try:
             tekst = Spraakherkenning()
             if tekst is None:
                 continue
-            if "stop" in tekst:
+            if tekst.strip().lower() == "stop":
                 print("Spraak besturingssysteem gestopt.")
                 break
             commando = parse_Commando(tekst)
