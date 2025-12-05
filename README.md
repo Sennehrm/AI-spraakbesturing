@@ -11,7 +11,6 @@
 
 
 ## V2
-* Wat is er nieuw?
   - Selectie keuze tussen pc besturing en led besturing.
   - Pc commando's zijn verplaatst naar een json voor een makkelijkere toevoeging van toekomste commando's.
   - Backup python file.
