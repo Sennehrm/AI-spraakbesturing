@@ -2,7 +2,7 @@
 
 ## Installatie instructies en gebruik uitleg volgen nog!
 
-# Versies:
+# Versie updates:
 ## V1
   - Aanmaak repo.
   - Basis commando's voor aansturing van pc.
