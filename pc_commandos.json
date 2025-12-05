@@ -1,0 +1,22 @@
+{
+  "open notepad": "notepad",
+  "open calculator": "calc",
+  "open browser": "start chrome",
+  "open paint": "mspaint",
+  "open steam": "start steam://open/main",
+  "open camera": "start microsoft.windows.camera:",
+  "open settings": "start ms-settings:",
+  "open website": "start https://www.xswim.be",
+  "open vives": "start https://www.vives.be",
+  "open visual studio code": "code",
+  "open powershell": "start powershell",
+  "open hyperV": "start virtmgmt.msc",
+  "open spotify": "start spotify",
+  "open youtube": "start https://www.youtube.com",
+  "open chat gpt": "start https://chat.openai.com",
+  "open verkenner": "explorer",
+  "open command prompt": "start cmd",
+  "open repo": "start https://github.com/Sennehrm/AI-spraakbesturing",
+  "open word": "start winword",
+  "open soundcloud": "start https://soundcloud.com"
+}
