@@ -1,4 +1,4 @@
-# AI spraakbesturing
+# AI spraakbesturing van computer of ledstrip
 
 ## Installatie instructies en gebruik uitleg volgen nog!
 
