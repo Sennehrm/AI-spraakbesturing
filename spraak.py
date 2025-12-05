@@ -1,8 +1,4 @@
-"""
-AI Spraakbesturing Applicatie
-==============================
-Een spraakgestuurde applicatie voor PC en LED besturing met visuele feedback.
-"""
+
 
 import speech_recognition as sr
 import datetime
@@ -329,7 +325,7 @@ class AudioProcessor:
     
     @staticmethod
     def configure_recognizer():
-        """Configureer recognizer voor betere noise handling"""
+        """Configureer  """
         herkenner = sr.Recognizer()
         herkenner.energy_threshold = 4000
         herkenner.dynamic_energy_threshold = True
