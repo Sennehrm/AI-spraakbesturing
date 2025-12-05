@@ -34,6 +34,7 @@
   - Commentaar toevoegen in de code.
   - Code en gui dummy proof maken.
   - README updaten & installatie / gebruik instructies invoegen.
+  - ...
     
 # Belangrijkste gebruikte resources:
   - speech_recognition : https://pypi.org/project/SpeechRecognition/ & https://github.com/Uberi/speech_recognition/blob/master/examples/microphone_recognition.py
