@@ -24,12 +24,15 @@
   - Tkinter voor gui.
   - Paho.mqtt.client voor de test broker.
   - Pyaudio voor microfoon selectie.
-
-## Toekomst
-  - Gui optimaliseren.
-  - Meer pc commando's toevoegen.
+    
+## V3
   - Aansturen van ledstrip met behulp van mqtt.
   - Huidige status ontvangen van letstrip met behulp van mqtt.
+  - Aanmaak json bestand met alle ledstrip commando's.
+  - Aanmaak json bestand voor mqtt client configuratie.
+  - Gui deoptimaliseerd.
+## Toekomst
+  - Meer pc & ledstrip commando's toevoegen.
   - Optimaliseren code.
   - Commentaar toevoegen in de code.
   - Code en gui dummy proof maken.
