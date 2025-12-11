@@ -36,7 +36,7 @@
   - Code en gui dummy proof maken.
   - Optimaliseren code.
 
-# V4
+## V4
   - Meer ledstrip commando's toegevoegd.
   - Commentaar toegevoegd in de code, Belangrijkste items, settings en varabelen worden uitgelegd.
     
