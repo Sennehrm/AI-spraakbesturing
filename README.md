@@ -32,13 +32,15 @@
   - Aanmaak json bestand voor mqtt client configuratie.
   - Gui deoptimaliseerd.
   - Tijdelijk aantal pc commando's.
+  - Onnodige debug berichten verwijderen.
+  - Code en gui dummy proof maken.
+  - Optimaliseren code.
+    
 ## Toekomst
   - Meer ledstrip commando's toevoegen.
-  - Optimaliseren code.
   - Commentaar toevoegen in de code.
-  - Code en gui dummy proof maken.
   - README updaten & installatie / gebruik instructies invoegen.
-  - ...
+  - Met de toekomst kunnen er misschien nog dingen bij komen of aangepast worden.
     
 # Belangrijkste gebruikte resources:
   - speech_recognition : https://pypi.org/project/SpeechRecognition/ & https://github.com/Uberi/speech_recognition/blob/master/examples/microphone_recognition.py
