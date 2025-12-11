@@ -20,7 +20,6 @@ import pyaudio
 # ============================================================================
 
 class AppStyle:    
-    # Kleuren (Catppuccin Mocha theme)
     BG_PRIMARY = "#1e1e2e"
     BG_SECONDARY = "#313244"
     BG_DARK = "#181825"
@@ -37,7 +36,6 @@ class AppStyle:
     RED_LIGHT = "#eba0ac"
     GRAY = "#45475a"
     
-    # Fonts
     FONT_TITLE = ("Arial", 28, "bold")
     FONT_HEADING = ("Arial", 14, "bold")
     FONT_BUTTON = ("Arial", 12, "bold")
@@ -47,7 +45,6 @@ class AppStyle:
     FONT_TINY = ("Arial", 10)
     FONT_EMOJI = ("Segoe UI Emoji", 15)
     
-    # Maten
     WINDOW_WIDTH = 800
     WINDOW_HEIGHT = 600
     
@@ -71,12 +68,11 @@ class AppStyle:
 # ============================================================================
 
 class Commando:
-    """Base class voor commando's"""
     def uitvoering(self):
         raise NotImplementedError("moet worden overschreven!")
 
+# PC commando's uitvoeren (notepad, calculator, etc.)
 class PcCommando(Commando):
-    """PC commando uitvoering"""
     def __init__(self, actie):
         self.actie = actie
         
@@ -88,8 +84,8 @@ class PcCommando(Commando):
         except Exception as e:
             print(f"Fout bij uitvoeren van actie: {e}")
 
+# LED commando's via MQTT versturen
 class LedCommando(Commando):
-    """LED commando uitvoering"""
     def __init__(self, actie, mqtt_client=None):
         self.actie = actie
         self.mqtt_client = mqtt_client
@@ -98,46 +94,54 @@ class LedCommando(Commando):
         tijd = datetime.datetime.now()
         print(f"LedCommando uitgevoerd op {tijd} met actie: {self.actie}")
         
-        # Verstuur commando naar MQTT broker
         if self.mqtt_client:
             self.mqtt_client.publish_command(self.actie)
-        else:
-            print(f"Geen MQTT verbinding - LED actie: {self.actie}")
 
 # ============================================================================
 # BUSINESS LOGIC - MQTT Client
 # ============================================================================
 
+# Laad MQTT broker instellingen uit mqtt_config.json
 def load_mqtt_config():
-    """Laad MQTT configuratie uit bestand"""
+    default_config = { # Standaard instellingen indien bestand ontbreekt of onjuist is
+        "broker": "localhost",
+        "port": 1883,
+        "topic": "led/commands"
+    }
+    
     try:
         with open("mqtt_config.json", "r", encoding="utf-8") as f:
             config = json.load(f)
+            
+            # Valideer configuratie
+            if not isinstance(config.get("broker"), str) or not config.get("broker"):
+                config["broker"] = default_config["broker"]
+            
+            if not isinstance(config.get("port"), int) or not (1 <= config.get("port", 0) <= 65535):
+                config["port"] = default_config["port"]
+            
+            if not isinstance(config.get("topic"), str) or not config.get("topic"):
+                config["topic"] = default_config["topic"]
+            
             return config
+            
     except FileNotFoundError:
-        # Gebruik standaard configuratie
-        default_config = {
-            "broker": "localhost",
-            "port": 1883,
-            "topic": "led/commands"
-        }
         # Maak bestand aan met standaard configuratie
         try:
             with open("mqtt_config.json", "w", encoding="utf-8") as f:
                 json.dump(default_config, f, indent=2)
-            print("✓ mqtt_config.json aangemaakt met standaard instellingen")
         except Exception as e:
-            print(f"⚠ Kon mqtt_config.json niet aanmaken: {e}")
+            pass
         return default_config
+        
     except json.JSONDecodeError as e:
-        print(f"⚠ Fout in mqtt_config.json: {e}, gebruik standaard waarden")
-        return {"broker": "localhost", "port": 1883, "topic": "led/commands"}
+        return default_config
+    except Exception as e:
+        return default_config
 
+# MQTT client met automatische reconnect en status feedback
 class MqttClient:
-    """MQTT Client voor LED communicatie"""
-    
-    def __init__(self, broker=None, port=None, topic=None):
-        # Laad configuratie uit bestand
+    def __init__(self, broker=None, port=None, topic=None, status_callback=None):
         config = load_mqtt_config()
         self.broker = broker or config.get("broker")
         self.port = port or config.get("port")
@@ -145,6 +149,13 @@ class MqttClient:
         self.client = mqtt.Client()
         self.connected = False
         self.message_callback = None
+        self.status_callback = status_callback
+        self.reconnect_attempts = 0
+        self.max_reconnect_attempts = 5
+        
+        # Valideer configuratie
+        if not self.broker or not self.port or not self.topic:
+            raise ValueError("MQTT configuratie onvolledig")
         
         # Callbacks
         self.client.on_connect = self._on_connect
@@ -156,87 +167,90 @@ class MqttClient:
         self.connect()
     
     def _on_connect(self, client, userdata, flags, rc):
-        """Callback bij verbinding"""
         if rc == 0:
-            print(f"✓ MQTT verbonden met {self.broker}:{self.port}")
             self.connected = True
-            # Subscribe to topic om berichten te ontvangen
+            self.reconnect_attempts = 0
             self.client.subscribe(self.topic)
-            print(f"✓ MQTT subscribed op topic: {self.topic}")
+            
+            if self.status_callback:
+                self.status_callback(True, "Verbonden") #aanduiding van succesvolle verbinding
         else:
-            print(f"✗ MQTT verbinding mislukt (code: {rc})")
             self.connected = False
+            if self.status_callback:
+                self.status_callback(False, f"Fout: {rc}") #aanduiding van verbindingsfout
     
     def _on_disconnect(self, client, userdata, rc):
-        """Callback bij disconnect"""
-        print(f"⚠ MQTT verbinding verbroken (code: {rc})")
         self.connected = False
+        
+        if self.status_callback:
+            self.status_callback(False, "Verbinding verbroken")
+        
+        # Automatisch opnieuw verbinden (max 5 pogingen)
+        if rc != 0 and self.reconnect_attempts < self.max_reconnect_attempts:
+            self.reconnect_attempts += 1
+            try:
+                self.client.reconnect()
+            except Exception as e:
+                pass
     
     def _on_publish(self, client, userdata, mid):
-        """Callback bij succesvol verzenden"""
-        print(f"✓ MQTT bericht verzonden (mid: {mid})")
+        pass
     
     def _on_message(self, client, userdata, msg):
-        """Callback bij ontvangen bericht"""
         try:
-            command = msg.payload.decode('utf-8')
-            print(f"📥 MQTT ontvangen: '{command}' van {msg.topic}")
+            command = msg.payload.decode('utf-8') #decoderen van ontvangen bericht
+            print(f"MQTT ontvangen: '{command}'") #tonen van ontvangen bericht
             
-            # Roep callback aan als die is geregistreerd
             if self.message_callback:
                 self.message_callback(command)
         except Exception as e:
-            print(f"✗ Fout bij verwerken MQTT bericht: {e}")
+            pass
     
     def set_message_callback(self, callback):
-        """Registreer callback functie voor inkomende berichten"""
         self.message_callback = callback
     
     def connect(self):
-        """Maak verbinding met MQTT broker"""
         try:
             self.client.connect(self.broker, self.port, keepalive=60)
             self.client.loop_start()
             return True
         except Exception as e:
-            print(f"✗ MQTT verbinding fout: {e}")
             self.connected = False
             return False
     
+    # Verstuur LED commando naar MQTT broker
     def publish_command(self, command):
-        """Verstuur LED commando naar broker"""
+        if not command or not isinstance(command, str):
+            return False
+            
         if not self.connected:
-            print(f"⚠ Niet verbonden met MQTT - probeer opnieuw te verbinden")
-            self.connect()
+            if self.status_callback:
+                self.status_callback(False, "Niet verbonden")
+            return False
             
         try:
-            result = self.client.publish(self.topic, command, qos=1)
+            result = self.client.publish(self.topic, command, qos=1) #verzenden van mqtt bericht
             if result.rc == mqtt.MQTT_ERR_SUCCESS:
-                print(f"📤 MQTT: '{command}' → {self.topic}")
+                print(f"MQTT: '{command}' → {self.topic}") #tonen van verzonden bericht
                 return True
             else:
-                print(f"✗ MQTT publish mislukt (code: {result.rc})")
                 return False
         except Exception as e:
-            print(f"✗ MQTT publish fout: {e}")
             return False
     
     def disconnect(self):
-        """Verbreek verbinding"""
         try:
             self.client.loop_stop()
             self.client.disconnect()
-            print("MQTT verbinding gesloten")
         except Exception as e:
-            print(f"Fout bij sluiten MQTT: {e}")
+            pass
 
 # ============================================================================
 # BUSINESS LOGIC - Parser Functions
 # ============================================================================
 
+# Beheert alle PC en LED commando's uit JSON files
 class CommandoManager:
-    """Beheert commando's uit JSON files"""
-    
     def __init__(self, mqtt_client=None):
         self.pc_commandos = {}
         self.led_commandos = {}
@@ -244,37 +258,27 @@ class CommandoManager:
         self._load_commandos()
     
     def _load_commandos(self):
-        """Laad commando's uit JSON files"""
         try:
-            # Laad PC commando's
             with open("pc_commandos.json", "r", encoding="utf-8") as f:
-                self.pc_commandos = json.load(f)
-            print(f"✓ {len(self.pc_commandos)} PC commando's geladen")
+                self.pc_commandos = json.load(f) #laden van pc commando's
         except FileNotFoundError:
-            print("⚠ pc_commandos.json niet gevonden, gebruik standaard commando's")
             self.pc_commandos = {}
         except json.JSONDecodeError as e:
-            print(f"⚠ Fout in pc_commandos.json: {e}")
             self.pc_commandos = {}
         
         try:
-            # Laad LED commando's
             with open("led_commandos.json", "r", encoding="utf-8") as f:
-                self.led_commandos = json.load(f)
-            print(f"✓ {len(self.led_commandos)} LED commando's geladen")
+                self.led_commandos = json.load(f) #laden van led commando's
         except FileNotFoundError:
-            print("⚠ led_commandos.json niet gevonden, gebruik standaard commando's")
             self.led_commandos = {}
         except json.JSONDecodeError as e:
-            print(f"⚠ Fout in led_commandos.json: {e}")
             self.led_commandos = {}
     
     def get_pc_commando(self, tekst):
-        """Zoek PC commando in tekst"""
         if not tekst:
             return None
         
-        # Zoek naar commando in tekst
+        # Zoek naar commando in pc tekst
         for key in self.pc_commandos:
             if key in tekst:
                 return PcCommando(self.pc_commandos[key])
@@ -282,11 +286,10 @@ class CommandoManager:
         return None
     
     def get_led_commando(self, tekst):
-        """Zoek LED commando in tekst"""
         if not tekst:
             return None
         
-        # Zoek naar commando in tekst
+        # Zoek naar commando in led tekst
         for key in self.led_commandos:
             if key in tekst:
                 return LedCommando(self.led_commandos[key], mqtt_client=self.mqtt_client)
@@ -294,116 +297,97 @@ class CommandoManager:
         return None
     
     def is_valid_pc_command(self, tekst):
-        """Check of tekst een geldig PC commando bevat"""
         if not tekst:
             return False
         return any(key in tekst for key in self.pc_commandos.keys())
     
     def is_valid_led_command(self, tekst):
-        """Check of tekst een geldig LED commando bevat"""
         if not tekst:
             return False
         return any(key in tekst for key in self.led_commandos.keys())
 
-# Global commando manager en MQTT client
+# Singleton instances (1x aanmaken, overal gebruiken)
 _commando_manager = None
 _mqtt_client = None
 
-def get_mqtt_client():
-    """Singleton pattern voor MqttClient"""
+def get_mqtt_client(): # Singleton MQTT client
     global _mqtt_client
     if _mqtt_client is None:
         _mqtt_client = MqttClient()
     return _mqtt_client
 
-def get_commando_manager():
-    """Singleton pattern voor CommandoManager"""
+def get_commando_manager(): # Singleton CommandoManager
     global _commando_manager
     if _commando_manager is None:
         mqtt_client = get_mqtt_client()
         _commando_manager = CommandoManager(mqtt_client=mqtt_client)
     return _commando_manager
 
-def parse_Commando(tekst):
-    """Parse tekst naar PC commando"""
+def parse_Commando(tekst): # Parse PC commando uit tekst
     if tekst is None:
         return None
     
-    manager = get_commando_manager()
+    manager = get_commando_manager() # Haal CommandoManager op
     commando = manager.get_pc_commando(tekst)
-    
-    if commando is None:
-        print(f"Geen geldig PC commando herkend in: '{tekst}'")
-    
     return commando
 
-def parse_Led_Commando(tekst):
-    """Parse tekst naar LED commando"""
+def parse_Led_Commando(tekst): # Parse LED commando uit tekst
     if tekst is None:
         return None
     
-    manager = get_commando_manager()
+    manager = get_commando_manager() # Haal CommandoManager op
     commando = manager.get_led_commando(tekst)
-    
-    if commando is None:
-        print(f"Geen geldig LED commando herkend in: '{tekst}'")
-    
     return commando
 
 # ============================================================================
 # BUSINESS LOGIC - Audio & Speech Recognition
 # ============================================================================
 
+# Audio verwerking en spraakherkenning instellingen
 class AudioProcessor:
-    """Handles audio monitoring and speech recognition"""
-    
     @staticmethod
     def configure_recognizer():
-        """Configureer recognizer voor betere herkenning van korte commando's"""
         herkenner = sr.Recognizer()
-        herkenner.energy_threshold = 4000
-        herkenner.dynamic_energy_threshold = True
-        herkenner.dynamic_energy_adjustment_damping = 0.15
-        herkenner.dynamic_energy_ratio = 1.5
-        # Kortere pauzes voor snellere herkenning van korte woorden
-        herkenner.pause_threshold = 0.5  # Verlaagd van 0.8 naar 0.5
-        herkenner.phrase_threshold = 0.2  # Verlaagd van 0.3 naar 0.2
-        herkenner.non_speaking_duration = 0.3  # Verlaagd van 0.5 naar 0.3
+        herkenner.energy_threshold = 4000 #basis energie drempel
+        herkenner.dynamic_energy_threshold = True #automatische aanpassing energie drempel
+        herkenner.dynamic_energy_adjustment_damping = 0.15 #snelheid van aanpassing
+        herkenner.dynamic_energy_ratio = 1.5 #versterking van energie drempel
+        herkenner.pause_threshold = 0.55 #tijd in seconden voor pauze
+        herkenner.phrase_threshold = 0.2 #minimale tijd voor spraak
+        herkenner.non_speaking_duration = 0.3 #tijd voor en na spraak
         return herkenner
 
 # ============================================================================
 # GUI - Main Application
 # ============================================================================
 
+# Hoofdapplicatie met GUI
 class SpraakennennerGUI:
-    """Hoofdapplicatie GUI"""
-    
     def __init__(self, root):
         self.root = root
         self.style = AppStyle()
         
-        # Window configuratie
         self.root.title("AI Spraakbesturing")
         self.root.geometry(f"{self.style.WINDOW_WIDTH}x{self.style.WINDOW_HEIGHT}")
         self.root.configure(bg=self.style.BG_PRIMARY)
         
-        # State variabelen
-        self.mode = tk.StringVar(value="PC")
+        self.mode = tk.StringVar(value="PC") # Standaard modus is PC
         self.selected_mic = tk.StringVar()
         self.is_listening = False
         self.is_muted = False
-        self.audio_queue = queue.Queue()
+        self.audio_queue = queue.Queue(maxsize=100) # Queue voor audio niveaus
         self.uitgevoerde_commandos = []
-        self.current_led_status = "Uit"
+        self.current_led_status = "Uit" # Huidige LED status
+        self.mqtt_status = "Connecting..." # Huidige MQTT status
         
-        # Setup UI
         self.setup_ui()
         
-        # Setup MQTT callback voor inkomende berichten
+        # MQTT ontvangen berichten callback
         mqtt_client = get_mqtt_client()
+        mqtt_client.status_callback = self.update_mqtt_status
         mqtt_client.set_message_callback(self.update_led_status_from_mqtt)
         
-        # Start audio monitor
+        # Audio visualizer starten
         self.start_audio_monitor()
     
     # ------------------------------------------------------------------------
@@ -411,18 +395,17 @@ class SpraakennennerGUI:
     # ------------------------------------------------------------------------
     
     def setup_ui(self):
-        """Bouw de complete UI"""
         self._create_title()
-        self._create_mode_selector()
+        self._create_mode_selector() 
         self._create_mic_selector()
+        self._create_mqtt_status()
         self._create_mute_button()
         self._create_led_status()
         self._create_audio_visualizer()
         self._create_control_buttons()
         self._create_status_label()
-    
-    def _create_title(self):
-        """Maak titel sectie"""
+
+    def _create_title(self): # Titel label
         title_frame = tk.Frame(self.root, bg=self.style.BG_PRIMARY)
         title_frame.pack(pady=20)
         
@@ -435,8 +418,7 @@ class SpraakennennerGUI:
         )
         title_label.pack()
     
-    def _create_mode_selector(self):
-        """Maak mode selectie knoppen"""
+    def _create_mode_selector(self): # Modus selectie knoppen
         mode_frame = tk.Frame(self.root, bg=self.style.BG_PRIMARY)
         mode_frame.pack(pady=20)
         
@@ -481,8 +463,7 @@ class SpraakennennerGUI:
         )
         self.led_button.pack(side=tk.LEFT, padx=10)
     
-    def _create_mic_selector(self):
-        """Maak microfoon selectie dropdown"""
+    def _create_mic_selector(self): # Microfoon selectie dropdown
         mic_frame = tk.Frame(self.root, bg=self.style.BG_PRIMARY)
         mic_frame.pack(pady=10)
         
@@ -531,8 +512,29 @@ class SpraakennennerGUI:
         )
         self.audio_info_label.pack(side=tk.LEFT, padx=10)
     
-    def _get_audio_devices(self):
-        """Haal lijst van audio input devices op"""
+    def _create_mqtt_status(self): # MQTT status indicator
+        mqtt_frame = tk.Frame(self.root, bg=self.style.BG_PRIMARY)
+        mqtt_frame.pack(pady=5)
+        
+        mqtt_label = tk.Label(
+            mqtt_frame,
+            text="MQTT:",
+            font=self.style.FONT_SMALL,
+            bg=self.style.BG_PRIMARY,
+            fg=self.style.TEXT_SECONDARY
+        )
+        mqtt_label.pack(side=tk.LEFT, padx=5)
+        
+        self.mqtt_status_label = tk.Label(
+            mqtt_frame,
+            text="⚫ Verbinden...",
+            font=self.style.FONT_SMALL,
+            bg=self.style.BG_PRIMARY,
+            fg=self.style.TEXT_SECONDARY
+        )
+        self.mqtt_status_label.pack(side=tk.LEFT, padx=5)
+    
+    def _get_audio_devices(self): # Haal lijst van audio input devices op
         devices = []
         try:
             p = pyaudio.PyAudio()
@@ -542,17 +544,15 @@ class SpraakennennerGUI:
                     devices.append((i, info['name']))
             p.terminate()
         except Exception as e:
-            print(f"Fout bij ophalen audio devices: {e}")
+            pass
         return devices
     
-    def _on_mic_change(self, event=None):
-        """Handle microfoon selectie wijziging"""
+    def _on_mic_change(self, event=None): # Microfoon wijziging handler
         selection = self.mic_dropdown.get()
         if selection and ':' in selection:
             try:
                 idx = int(selection.split(':')[0])
                 self.current_mic_index = idx
-                print(f"Microfoon gewijzigd naar index {idx}")
                 
                 # Herstart audio stream met nieuwe microfoon
                 if hasattr(self, 'stream'):
@@ -562,10 +562,9 @@ class SpraakennennerGUI:
                 
                 self.status_label.config(text=f"Microfoon gewijzigd: {selection}")
             except Exception as e:
-                print(f"Fout bij wijzigen microfoon: {e}")
+                pass
     
-    def _create_mute_button(self):
-        """Maak ronde mute knop"""
+    def _create_mute_button(self): # Mute knop
         mic_frame = tk.Frame(self.root, bg=self.style.BG_PRIMARY)
         mic_frame.pack(pady=10)
         
@@ -609,8 +608,7 @@ class SpraakennennerGUI:
         
         self.mute_canvas.bind("<Button-1>", lambda e: self.toggle_mute())
     
-    def _create_led_status(self):
-        """Maak LED status display"""
+    def _create_led_status(self): # LED status display
         self.led_status_frame = tk.Frame(
             self.root, 
             bg=self.style.BG_SECONDARY, 
@@ -618,7 +616,7 @@ class SpraakennennerGUI:
             borderwidth=2
         )
         
-        led_status_title = tk.Label(
+        led_status_title = tk.Label( 
             self.led_status_frame,
             text="💡 LED Strip Status",
             font=self.style.FONT_BUTTON,
@@ -636,8 +634,7 @@ class SpraakennennerGUI:
         )
         self.led_status_label.pack(pady=10, padx=20)
     
-    def _create_audio_visualizer(self):
-        """Maak audio visualizer met bars"""
+    def _create_audio_visualizer(self): # Audio visualizer bars
         viz_frame = tk.Frame(self.root, bg=self.style.BG_PRIMARY)
         viz_frame.pack(pady=30)
         
@@ -674,8 +671,7 @@ class SpraakennennerGUI:
             )
             self.bars.append(bar)
     
-    def _create_control_buttons(self):
-        """Maak start/stop knoppen"""
+    def _create_control_buttons(self): # Start/Stop knoppen
         control_frame = tk.Frame(self.root, bg=self.style.BG_PRIMARY)
         control_frame.pack(pady=20)
         
@@ -706,8 +702,7 @@ class SpraakennennerGUI:
         )
         self.stop_button.pack(side=tk.LEFT, padx=10)
     
-    def _create_status_label(self):
-        """Maak status label"""
+    def _create_status_label(self): # Status label onderaan
         self.status_label = tk.Label(
             self.root,
             text="Klaar om te starten",
@@ -721,8 +716,7 @@ class SpraakennennerGUI:
     # Event Handlers
     # ------------------------------------------------------------------------
     
-    def toggle_mute(self):
-        """Toggle mute status"""
+    def toggle_mute(self): # Mute/unmute microfoon
         self.is_muted = not self.is_muted
         
         if self.is_muted:
@@ -748,8 +742,7 @@ class SpraakennennerGUI:
             if hasattr(self, 'stream') and not self.stream.active:
                 self.stream.start()
     
-    def set_mode(self, mode):
-        """Wijzig mode (PC/LED)"""
+    def set_mode(self, mode): # Wijzig modus tussen PC en LED
         self.mode.set(mode)
         
         if mode == "PC":
@@ -767,16 +760,45 @@ class SpraakennennerGUI:
     # Audio Processing
     # ------------------------------------------------------------------------
     
+    # Update MQTT status indicator (thread-safe)
+    def update_mqtt_status(self, connected, status_text):
+        def update():
+            if connected:
+                self.mqtt_status_label.config(
+                    text=f"🟢 {status_text}",
+                    fg=self.style.GREEN
+                )
+            else:
+                self.mqtt_status_label.config(
+                    text=f"🔴 {status_text}",
+                    fg=self.style.RED
+                )
+        
+        try:
+            self.root.after(0, update)
+        except Exception as e:
+            pass
+    
+    # ------------------------------------------------------------------------
+    # Audio Processing
+    # ------------------------------------------------------------------------
+    
+    # Audio stream voor visualizer bars
     def start_audio_monitor(self):
-        """Start audio monitoring voor visualizer"""
         def audio_callback(indata, frames, time, status):
             if status:
                 print(f"Audio stream status: {status}")
             
             try:
                 # Bereken RMS volume en versterk het signaal
-                volume_norm = np.linalg.norm(indata) * 15  # Verhoogd van 10 naar 15
-                self.audio_queue.put(volume_norm)
+                volume_norm = np.linalg.norm(indata) * 15
+                
+                # Voeg toe aan queue, skip als vol
+                try:
+                    self.audio_queue.put_nowait(volume_norm)
+                except queue.Full:
+                    # Queue is vol, skip dit sample
+                    pass
                 
                 # Update audio info indicator (green bij geluid)
                 if volume_norm > 5:
@@ -784,9 +806,13 @@ class SpraakennennerGUI:
                         text="🔊", fg=self.style.GREEN
                     ))
                 else:
-                    self.root.after(0, lambda: self.audio_info_label.config(
-                        text="🎤", fg=self.style.GRAY
-                    ))
+                    if hasattr(self, 'root') and hasattr(self, 'audio_info_label'):
+                        try:
+                            self.root.after(0, lambda: self.audio_info_label.config(
+                                text="🎤", fg=self.style.GRAY
+                            ))
+                        except:
+                            pass
             except Exception as e:
                 print(f"Audio callback error: {e}")
         
@@ -806,23 +832,22 @@ class SpraakennennerGUI:
             
             # Haal device info op
             device_info = sd.query_devices(device_index, 'input')
-            print(f"✓ Audio stream actief op: {device_info['name']}")
+            print(f"Audio stream actief op: {device_info['name']}")
             print(f"  Sample rate: {device_info['default_samplerate']} Hz")
             print(f"  Channels: {device_info['max_input_channels']}")
             
             # Start audio bars update loop (alleen als nog niet actief)
             if not hasattr(self, 'audio_bars_running') or not self.audio_bars_running:
                 self.audio_bars_running = True
-                print("🎨 Starting audio bars animation...")
+                print("Starting audio bars animation...")
                 self.update_audio_bars()
         except Exception as e:
-            print(f"❌ Fout bij starten audio monitor: {e}")
+            print(f"Fout bij starten audio monitor: {e}")
             self.status_label.config(text=f"Audio fout: {e}")
             import traceback
             traceback.print_exc()
     
-    def update_audio_bars(self):
-        """Update audio visualizer bars"""
+    def update_audio_bars(self): # Update audio visualizer bars
         if not self.audio_bars_running:
             return
             
@@ -847,15 +872,6 @@ class SpraakennennerGUI:
             
             self.last_volume = current_volume
             
-            # Debug: print volume periodiek
-            if not hasattr(self, '_debug_counter'):
-                self._debug_counter = 0
-            self._debug_counter += 1
-            
-            if self._debug_counter % 20 == 0:  # Elke seconde (20 * 50ms)
-                print(f"📊 Volume: {current_volume:.1f} | Queue items: {queue_items} | Bars: {len(self.bars)}")
-                self._debug_counter = 0
-            
             # Update alle bars
             for i, bar in enumerate(self.bars):
                 # Creëer golf effect vanuit midden
@@ -873,13 +889,13 @@ class SpraakennennerGUI:
                 
                 # Update bar positie en kleur
                 coords = self.canvas.coords(bar)
-                if coords:  # Check of coords valid zijn
+                if coords:
                     self.canvas.coords(bar, coords[0], 140 - height, coords[2], 140)
                     self.canvas.itemconfig(bar, fill=color)
         except Exception as e:
-            print(f"Error updating bars: {e}")
+            pass
         
-        # Schedule volgende update (altijd, anders stopt de loop)
+        # Schedule volgende update
         if self.audio_bars_running:
             self.root.after(50, self.update_audio_bars)
     
@@ -887,8 +903,7 @@ class SpraakennennerGUI:
     # Speech Recognition
     # ------------------------------------------------------------------------
     
-    def start_listening(self):
-        """Start luisteren naar commando's"""
+    def start_listening(self): # Start spraakherkenning
         self.is_listening = True
         self.start_button.config(state=tk.DISABLED)
         self.stop_button.config(state=tk.NORMAL)
@@ -896,69 +911,108 @@ class SpraakennennerGUI:
         
         threading.Thread(target=self.listen_loop, daemon=True).start()
     
-    def stop_listening(self):
-        """Stop luisteren"""
+    def stop_listening(self): # Stop spraakherkenning
         self.is_listening = False
         self.start_button.config(state=tk.NORMAL)
         self.stop_button.config(state=tk.DISABLED)
         self.status_label.config(text="Gestopt")
         self.save_commandos()
     
+    # Spraakherkenning loop (draait in aparte thread)
     def listen_loop(self):
-        """Luister loop voor spraakherkenning"""
         herkenner = AudioProcessor.configure_recognizer()
         
         # Kalibreer één keer bij starten
         calibrated = False
+        error_count = 0
+        max_errors = 5
         
         while self.is_listening:
             if self.is_muted:
                 continue
             
             try:
-                with sr.Microphone(device_index=None) as invoer:
+                with sr.Microphone(device_index=self.current_mic_index) as invoer:
                     # Kalibreer alleen de eerste keer
                     if not calibrated:
-                        self.root.after(0, lambda: self.status_label.config(text="🎧 Kalibreren..."))
-                        herkenner.adjust_for_ambient_noise(invoer, duration=1)
-                        calibrated = True
+                        try:
+                            self.root.after(0, lambda: self.status_label.config(text="🎧 Kalibreren..."))
+                            herkenner.adjust_for_ambient_noise(invoer, duration=1)
+                            calibrated = True
+                        except Exception as e:
+                            calibrated = True
                     
-                    self.root.after(0, lambda: self.status_label.config(text="🎤 Luisteren..."))
+                    try:
+                        self.root.after(0, lambda: self.status_label.config(text="🎤 Luisteren..."))
+                    except:
+                        pass
+                        
                     audio = herkenner.listen(invoer, timeout=3, phrase_time_limit=5)
                     
                     try:
                         tekst = herkenner.recognize_google(audio, language="nl-NL")
-                        self.root.after(0, lambda t=tekst: self.process_command(t))
-                    except sr.UnknownValueError:
-                        self.root.after(0, lambda: self.status_label.config(
-                            text="Kon het commando niet begrijpen"
-                        ))
-                    except sr.RequestError as e:
-                        self.root.after(0, lambda: self.status_label.config(
-                            text=f"Service fout: {e}"
-                        ))
-            except sr.WaitTimeoutError:
+                        error_count = 0  # Reset error counter
+                        try:
+                            self.root.after(0, lambda t=tekst: self.process_command(t))
+                        except:
+                            pass
+                    except sr.UnknownValueError: # Onbekende spraak
+                        try:
+                            self.root.after(0, lambda: self.status_label.config(
+                                text="Kon het commando niet begrijpen"
+                            ))
+                        except:
+                            pass
+                    except sr.RequestError as e: # Service fout
+                        error_count += 1
+                        try:
+                            self.root.after(0, lambda err=str(e): self.status_label.config(
+                                text=f"Service fout: {err}"
+                            ))
+                        except:
+                            pass
+                        if error_count >= max_errors:
+                            break
+                            
+            except sr.WaitTimeoutError: # Timeout bij luisteren
                 continue
-            except Exception as e:
-                self.root.after(0, lambda: self.status_label.config(text=f"Fout: {e}"))
-                break
+            except Exception as e: # Algemene fout
+                error_count += 1
+                try:
+                    self.root.after(0, lambda err=str(e): self.status_label.config(text=f"Fout: {err}"))
+                except:
+                    pass
+                if error_count >= max_errors:
+                    break
+        
+        # Cleanup
+        if error_count >= max_errors:
+            try:
+                self.root.after(0, lambda: self.stop_listening())
+            except:
+                pass
     
-    def process_command(self, tekst):
-        """Verwerk herkend commando"""
-        self.status_label.config(text=f'Je zei: "{tekst}"')
-        tekst_lower = tekst.lower()
+    def process_command(self, tekst): # Verwerk herkend commando
+        if not tekst or not isinstance(tekst, str):
+            return
+            
+        try:
+            self.status_label.config(text=f'Je zei: "{tekst}"') # Toon herkend tekst
+        except:
+            pass
+            
+        tekst_lower = tekst.lower() # Voor eenvoudige matching
         
         if "stop" in tekst_lower:
-            self.stop_listening()
+            self.stop_listening() # Stop commando
             return
         
-        if self.mode.get() == "PC":
+        if self.mode.get() == "PC": # PC modus
             self._process_pc_command(tekst, tekst_lower)
         else:
             self._process_led_command(tekst, tekst_lower)
     
-    def _process_pc_command(self, tekst, tekst_lower):
-        """Verwerk PC commando"""
+    def _process_pc_command(self, tekst, tekst_lower): # Verwerk PC commando
         commando = parse_Commando(tekst_lower)
         if commando:
             commando.uitvoering()
@@ -967,8 +1021,7 @@ class SpraakennennerGUI:
         else:
             self.status_label.config(text="Geen geldig commando herkend")
     
-    def _process_led_command(self, tekst, tekst_lower):
-        """Verwerk LED commando"""
+    def _process_led_command(self, tekst, tekst_lower): # Verwerk LED commando
         led_commando = parse_Led_Commando(tekst_lower)
         if led_commando:
             led_commando.uitvoering()
@@ -980,8 +1033,7 @@ class SpraakennennerGUI:
         else:
             self.status_label.config(text="Geen geldig LED commando herkend")
     
-    def _update_led_status_display(self, command_text):
-        """Update LED status display op basis van commando tekst"""
+    def _update_led_status_display(self, command_text): # Update LED status label
         status_map = {
             "aan": "Aan",
             "uit": "Uit",
@@ -1005,46 +1057,65 @@ class SpraakennennerGUI:
         if self.led_status_frame.winfo_ismapped():
             self.led_status_label.config(text=self.current_led_status)
     
-    def update_led_status_from_mqtt(self, command):
-        """Update LED status op basis van MQTT bericht (voor MQTT Explorer test)"""
-        print(f"🔄 GUI update van MQTT commando: {command}")
+    def update_led_status_from_mqtt(self, command): # Update LED status van MQTT bericht
+        if not command or not isinstance(command, str):
+            return
         
-        # Update status display
-        self._update_led_status_display(command)
+        def safe_update():
+            try:
+                # Update status display
+                self._update_led_status_display(command)
+                
+                # Update status label
+                self.status_label.config(
+                    text=f'MQTT ontvangen: "{command}"'
+                )
+            except Exception as e:
+                pass
         
-        # Update status label in GUI thread
-        self.root.after(0, lambda: self.status_label.config(
-            text=f'📥 MQTT ontvangen: "{command}"'
-        ))
+        try:
+            self.root.after(0, safe_update)
+        except Exception as e:
+            pass
     
     # ------------------------------------------------------------------------
     # Data Management
     # ------------------------------------------------------------------------
     
-    def save_commandos(self):
-        """Sla uitgevoerde commando's op"""
+    def save_commandos(self): # Sla uitgevoerde commando's op in JSON file
         try:
             with open("uitgevoerde_commandos.json", "w") as f:
                 json.dump(self.uitgevoerde_commandos, f, default=str, indent=2)
-            print("Uitgevoerde commandos opgeslagen")
         except Exception as e:
-            print(f"Fout bij opslaan: {e}")
+            pass
     
+    # Cleanup bij afsluiten applicatie
     def on_closing(self):
-        """Cleanup bij sluiten"""
         self.is_listening = False
-        self.audio_bars_running = False  # Stop audio bars update loop
+        self.audio_bars_running = False
         
         if hasattr(self, 'stream'):
-            self.stream.stop()
-            self.stream.close()
+            try:
+                self.stream.stop()
+                self.stream.close()
+            except Exception as e:
+                pass
         
-        # Sluit MQTT verbinding
-        mqtt_client = get_mqtt_client()
-        mqtt_client.disconnect()
+        try:
+            mqtt_client = get_mqtt_client()
+            mqtt_client.disconnect()
+        except Exception as e:
+            pass
         
-        self.save_commandos()
-        self.root.destroy()
+        try:
+            self.save_commandos()
+        except Exception as e:
+            pass
+        
+        try:
+            self.root.destroy()
+        except Exception as e:
+            pass
 
 # ============================================================================
 # MAIN PROGRAM
@@ -1055,14 +1126,13 @@ _window_lock = threading.Lock()
 _window_running = False
 _pending_runs = 0
 
-def main():
-    """Hoofdprogramma entry point"""
+# Hoofdprogramma
+def main(): 
     global _window_running, _pending_runs
     
     # Voorkom meerdere instances
     with _window_lock:
         if _window_running or _pending_runs > 0:
-            print("Spraakbesturing window is al actief of wordt gestart.")
             return
         _pending_runs += 1
     
@@ -1070,24 +1140,24 @@ def main():
         _window_running = True
         
         root = tk.Tk()
-        app = SpraakennennerGUI(root)
+        app = SpraakennennerGUI(root) 
         
-        def on_closing():
+        def on_closing(): # Afsluit event handler
             global _window_running, _pending_runs
-            app.on_closing()
+            app.on_closing() # Cleanup in app
             with _window_lock:
                 _window_running = False
                 _pending_runs = 0
         
-        root.protocol("WM_DELETE_WINDOW", on_closing)
+        root.protocol("WM_DELETE_WINDOW", on_closing) # Sluit event handler
         root.mainloop()
         
     except Exception as e:
-        print(f"Fout: {e}")
+        pass
     finally:
         with _window_lock:
             _window_running = False
             _pending_runs = 0
 
 if __name__ == "__main__":
-    main()
+    main() 
