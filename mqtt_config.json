@@ -1,0 +1,5 @@
+{
+  "broker": "localhost",
+  "port": 1883,
+  "topic": "led/commands"
+}

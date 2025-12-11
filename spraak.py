@@ -65,11 +65,6 @@ class AppStyle:
     BAR_COUNT = 20
     BAR_WIDTH = 25
     BAR_SPACING = 5
-    
-    # MQTT Configuratie
-    MQTT_BROKER = "localhost"
-    MQTT_PORT = 1883
-    MQTT_TOPIC = "led/commands"
 
 # ============================================================================
 # BUSINESS LOGIC - Commando Classes
@@ -113,13 +108,40 @@ class LedCommando(Commando):
 # BUSINESS LOGIC - MQTT Client
 # ============================================================================
 
+def load_mqtt_config():
+    """Laad MQTT configuratie uit bestand"""
+    try:
+        with open("mqtt_config.json", "r", encoding="utf-8") as f:
+            config = json.load(f)
+            return config
+    except FileNotFoundError:
+        # Gebruik standaard configuratie
+        default_config = {
+            "broker": "localhost",
+            "port": 1883,
+            "topic": "led/commands"
+        }
+        # Maak bestand aan met standaard configuratie
+        try:
+            with open("mqtt_config.json", "w", encoding="utf-8") as f:
+                json.dump(default_config, f, indent=2)
+            print("✓ mqtt_config.json aangemaakt met standaard instellingen")
+        except Exception as e:
+            print(f"⚠ Kon mqtt_config.json niet aanmaken: {e}")
+        return default_config
+    except json.JSONDecodeError as e:
+        print(f"⚠ Fout in mqtt_config.json: {e}, gebruik standaard waarden")
+        return {"broker": "localhost", "port": 1883, "topic": "led/commands"}
+
 class MqttClient:
     """MQTT Client voor LED communicatie"""
     
-    def __init__(self, broker=AppStyle.MQTT_BROKER, port=AppStyle.MQTT_PORT, topic=AppStyle.MQTT_TOPIC):
-        self.broker = broker
-        self.port = port
-        self.topic = topic
+    def __init__(self, broker=None, port=None, topic=None):
+        # Laad configuratie uit bestand
+        config = load_mqtt_config()
+        self.broker = broker or config.get("broker")
+        self.port = port or config.get("port")
+        self.topic = topic or config.get("topic")
         self.client = mqtt.Client()
         self.connected = False
         self.message_callback = None
@@ -234,6 +256,18 @@ class CommandoManager:
         except json.JSONDecodeError as e:
             print(f"⚠ Fout in pc_commandos.json: {e}")
             self.pc_commandos = {}
+        
+        try:
+            # Laad LED commando's
+            with open("led_commandos.json", "r", encoding="utf-8") as f:
+                self.led_commandos = json.load(f)
+            print(f"✓ {len(self.led_commandos)} LED commando's geladen")
+        except FileNotFoundError:
+            print("⚠ led_commandos.json niet gevonden, gebruik standaard commando's")
+            self.led_commandos = {}
+        except json.JSONDecodeError as e:
+            print(f"⚠ Fout in led_commandos.json: {e}")
+            self.led_commandos = {}
     
     def get_pc_commando(self, tekst):
         """Zoek PC commando in tekst"""
@@ -325,15 +359,16 @@ class AudioProcessor:
     
     @staticmethod
     def configure_recognizer():
-        """Configureer  """
+        """Configureer recognizer voor betere herkenning van korte commando's"""
         herkenner = sr.Recognizer()
         herkenner.energy_threshold = 4000
         herkenner.dynamic_energy_threshold = True
         herkenner.dynamic_energy_adjustment_damping = 0.15
         herkenner.dynamic_energy_ratio = 1.5
-        herkenner.pause_threshold = 0.8
-        herkenner.phrase_threshold = 0.3
-        herkenner.non_speaking_duration = 0.5
+        # Kortere pauzes voor snellere herkenning van korte woorden
+        herkenner.pause_threshold = 0.5  # Verlaagd van 0.8 naar 0.5
+        herkenner.phrase_threshold = 0.2  # Verlaagd van 0.3 naar 0.2
+        herkenner.non_speaking_duration = 0.3  # Verlaagd van 0.5 naar 0.3
         return herkenner
 
 # ============================================================================
