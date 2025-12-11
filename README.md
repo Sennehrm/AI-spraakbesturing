@@ -39,6 +39,7 @@
 ## V4
   - Meer ledstrip commando's toegevoegd.
   - Commentaar toegevoegd in de code, Belangrijkste items, settings en varabelen worden uitgelegd.
+  - requirements.txt file toegevoegd.
     
 ## Toekomst
   - README updaten & installatie / gebruik instructies invoegen.
