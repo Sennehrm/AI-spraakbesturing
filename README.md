@@ -24,17 +24,23 @@
   - Tkinter voor gui.
   - Paho.mqtt.client voor de test broker.
   - Pyaudio voor microfoon selectie.
-
-## Toekomst
-  - Gui optimaliseren.
-  - Meer pc commando's toevoegen.
+    
+## V3
   - Aansturen van ledstrip met behulp van mqtt.
   - Huidige status ontvangen van letstrip met behulp van mqtt.
-  - Optimaliseren code.
-  - Commentaar toevoegen in de code.
+  - Aanmaak json bestand met alle ledstrip commando's.
+  - Aanmaak json bestand voor mqtt client configuratie.
+  - Gui deoptimaliseerd.
+  - Tijdelijk aantal pc commando's.
+  - Onnodige debug berichten verwijderen.
   - Code en gui dummy proof maken.
+  - Optimaliseren code.
+    
+## Toekomst
+  - Meer ledstrip commando's toevoegen.
+  - Commentaar toevoegen in de code.
   - README updaten & installatie / gebruik instructies invoegen.
-  - ...
+  - Met de toekomst kunnen er misschien nog dingen bij komen of aangepast worden.
     
 # Belangrijkste gebruikte resources:
   - speech_recognition : https://pypi.org/project/SpeechRecognition/ & https://github.com/Uberi/speech_recognition/blob/master/examples/microphone_recognition.py
