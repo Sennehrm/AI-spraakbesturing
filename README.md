@@ -31,8 +31,9 @@
   - Aanmaak json bestand met alle ledstrip commando's.
   - Aanmaak json bestand voor mqtt client configuratie.
   - Gui deoptimaliseerd.
+  - Tijdelijk aantal pc commando's.
 ## Toekomst
-  - Meer pc & ledstrip commando's toevoegen.
+  - Meer ledstrip commando's toevoegen.
   - Optimaliseren code.
   - Commentaar toevoegen in de code.
   - Code en gui dummy proof maken.
