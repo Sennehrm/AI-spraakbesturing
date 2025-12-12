@@ -1,8 +1,36 @@
 # AI spraakbesturing van computer of ledstrip
 
-## Installatie instructies en gebruik uitleg volgen nog!
+# Installatie
+
+1. Clone deze repo: https://github.com/Sennehrm/AI-spraakbesturing.git
+2. Open een terminal en voer <b>pip install -r requirements.txt<b> uit.
+3. Pas de mqtt info aan in mqtt_config.json.
+  - Indien je een lokale test broker gebruikt laat dit staan.
+4. Pas de led_commandos.json aan zodat na de <b>:<b> en binnen de <b>" "<b> de juiste data wordt verstuurd naar de broker.
+5. Voeg indien nodig meer pc of eld commando's toe.
+
+# Gebruik
+
+1. Zorg er voor dat mqtt broker online is.
+2. Run de spraak.py file. Nu zal er een extra window geopend worden met de gui er op.
+3. Op de gui vindt men allerlei dingen
+  - Selectie knop voor pc besturing of led besturing.
+  - Status weergave van de mqtt connectie.
+  - Dropdown menu waar de juiste microfoon kan geslecteerd worden.
+  - Naast de dropdown staat een kleine visualisatie om aan te tonen dat de mic werkt.
+  - Ronde mute knop die de microfoon kan muten.
+  - Audio visualisatie die beweegt op mate van het spraak volume.
+  - Knop om te starten met luisteren naar microfoon input.
+  - Knop om te stoppen met luisteren.
+  - Feedback zin die van alles toont, dingen zoals: uitgevoerde command, kalibratie, geen bestaand command, verzonden item naar mqtt, starten met luisteren, gestopt, ...
+4. Voor debugging gebruik een mqtt viewer zoals <b>MQTTX<b>, <b>MQTT Explorer<b>, <b>MQTTBox<b>, ...
+5. Zorg er voor dat de juiste microfoon is geslecteerd en de mute knop op rood staat.
+6. Druk op <b>begin met luisteren<b>.
+7. Begin met praten!
+
 
 # Versie updates:
+
 ## V1
   - Aanmaak repo.
   - Basis commando's voor aansturing van pc.
