@@ -26,7 +26,8 @@
 4. Voor debugging gebruik een mqtt viewer zoals <b><ins>MQTTX</ins></b>, <b><ins>MQTT Explorer</ins></b>, <b><ins>MQTTBox</ins></b>, ...
 5. Zorg er voor dat de juiste microfoon is geslecteerd en de mute knop op rood staat.
 6. Druk op <b><ins>begin met luisteren</ins><b>. Om te stoppen druk op <b><ins>stop</ins></b>.
-7. <h2>Begin met praten!</h2>
+
+<h1>Begin met praten!</h1>
 
 
 # Versie updates:
