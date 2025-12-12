@@ -30,7 +30,11 @@
 
 <h1>Begin met praten!</h1>
 
-
+# Q&A
+   - Error bij een package? -> voer <b>pip install <ins>Package naam</ins></b> uit. Vb: <b><ins>pip install numpy</b></ins>
+   - Ik heb geen MQTT verbinding? -> Zorg er voor dat de mqtt broker online is en draait, kijk ook of je in <ins>mqtt_config.json</ins> de jusit mqtt informatie hebt ingevoegd of bijgevoegd.
+   - Ik heb geen input? -> Controleer of je de juiste microfoon hebt geslecteert en kijk of je naast de dropdown de indicatie ziet groen kleuren wanneer je spreekt. Als dit zo is controleer of de mute knop niet actief is en of je hebt gedrukt op <ins>begin met luisteren</ins>.
+     
 # Versie updates:
 
 ## V1
