@@ -5,7 +5,7 @@
 1. Clone deze repo: https://github.com/Sennehrm/AI-spraakbesturing.git
 2. Open een terminal en voer <b><ins>pip install -r requirements.txt</ins></b> uit.
 3. Pas de mqtt info aan in mqtt_config.json.
-  - Indien je een lokale test broker gebruikt laat dit staan.
+   - Indien je een lokale test broker gebruikt laat dit staan.
 4. Pas de led_commandos.json aan zodat na de <b><ins>:</ins></b> en binnen de <b><ins>""</ins></b> de juiste data wordt verstuurd naar de broker.
 5. Voeg indien nodig meer pc of led commando's toe.
 
