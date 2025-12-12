@@ -3,10 +3,10 @@
 # Installatie
 
 1. Clone deze repo: https://github.com/Sennehrm/AI-spraakbesturing.git
-2. Open een terminal en voer <b>pip install -r requirements.txt<b> uit.
+2. Open een terminal en voer <b><ins>pip install -r requirements.txt</ins></b> uit.
 3. Pas de mqtt info aan in mqtt_config.json.
   - Indien je een lokale test broker gebruikt laat dit staan.
-4. Pas de led_commandos.json aan zodat na de <b>:<b> en binnen de <b>" "<b> de juiste data wordt verstuurd naar de broker.
+4. Pas de led_commandos.json aan zodat na de <b><ins>:</ins></b> en binnen de <b><ins>""</ins></b> de juiste data wordt verstuurd naar de broker.
 5. Voeg indien nodig meer pc of eld commando's toe.
 
 # Gebruik
@@ -23,10 +23,11 @@
   - Knop om te starten met luisteren naar microfoon input.
   - Knop om te stoppen met luisteren.
   - Feedback zin die van alles toont, dingen zoals: uitgevoerde command, kalibratie, geen bestaand command, verzonden item naar mqtt, starten met luisteren, gestopt, ...
-4. Voor debugging gebruik een mqtt viewer zoals <b>MQTTX<b>, <b>MQTT Explorer<b>, <b>MQTTBox<b>, ...
+4. Voor debugging gebruik een mqtt viewer zoals <b><ins>MQTTX</ins></b>, <b><ins>MQTT Explorer</ins></b>, <b><ins>MQTTBox</ins></b>, ...
 5. Zorg er voor dat de juiste microfoon is geslecteerd en de mute knop op rood staat.
-6. Druk op <b>begin met luisteren<b>.
-7. Begin met praten!
+6. Druk op <b><ins>begin met luisteren</ins><b>. Om te stoppen druk op <b><ins>stop</ins></b>.
+
+<h1>Begin met praten!</h1>
 
 
 # Versie updates:
@@ -70,7 +71,6 @@
   - requirements.txt file toegevoegd.
     
 ## Toekomst
-  - README updaten & installatie / gebruik instructies invoegen.
   - Met de toekomst kunnen er misschien nog dingen bij komen of aangepast worden.
     
 # Belangrijkste gebruikte resources:
