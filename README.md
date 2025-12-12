@@ -5,15 +5,16 @@
 1. Clone deze repo: https://github.com/Sennehrm/AI-spraakbesturing.git
 2. Open een terminal en voer <b><ins>pip install -r requirements.txt</ins></b> uit.
 3. Pas de mqtt info aan in mqtt_config.json.
-  - Indien je een lokale test broker gebruikt laat dit staan.
+   - Indien je een lokale test broker gebruikt laat dit staan.
 4. Pas de led_commandos.json aan zodat na de <b><ins>:</ins></b> en binnen de <b><ins>""</ins></b> de juiste data wordt verstuurd naar de broker.
-5. Voeg indien nodig meer pc of eld commando's toe.
+5. Voeg indien nodig meer pc of led commando's toe.
 
 # Gebruik
 
 1. Zorg er voor dat mqtt broker online is.
-2. Run de spraak.py file. Nu zal er een extra window geopend worden met de gui er op.
-3. Op de gui vindt men allerlei dingen
+   - Indien je een lokale broker gebruikt start deze in je terminal met <b><ins>& "C:\Program Files\mosquitto\mosquitto.exe" -v</ins></b>.
+3. Run de spraak.py file. Nu zal er een extra window geopend worden met de gui er op.
+4. Op de gui vindt men allerlei dingen
   - Selectie knop voor pc besturing of led besturing.
   - Status weergave van de mqtt connectie.
   - Dropdown menu waar de juiste microfoon kan geslecteerd worden.
@@ -29,7 +30,11 @@
 
 <h1>Begin met praten!</h1>
 
-
+# Q&A
+   - Error bij een package? -> voer <b>pip install <ins>Package naam</ins></b> uit. Vb: <b><ins>pip install numpy</b></ins>
+   - Ik heb geen MQTT verbinding? -> Zorg er voor dat de mqtt broker online is en draait, kijk ook of je in <ins>mqtt_config.json</ins> de jusit mqtt informatie hebt ingevoegd of bijgevoegd.
+   - Ik heb geen input? -> Controleer of je de juiste microfoon hebt geslecteert en kijk of je naast de dropdown de indicatie ziet groen kleuren wanneer je spreekt. Als dit zo is controleer of de mute knop niet actief is en of je hebt gedrukt op <ins>begin met luisteren</ins>.
+     
 # Versie updates:
 
 ## V1
