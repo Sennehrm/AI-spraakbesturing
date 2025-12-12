@@ -1159,5 +1159,5 @@ def main():
             _window_running = False
             _pending_runs = 0
 
-if __name__ == "__main__":
+if __name__ == "__main__": #Zorgt ervoor dat main alleen wordt uitgevoerd als dit script direct wordt uitgevoerd
     main() 
