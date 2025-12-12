@@ -352,9 +352,9 @@ class AudioProcessor:
         herkenner.dynamic_energy_threshold = True #automatische aanpassing energie drempel
         herkenner.dynamic_energy_adjustment_damping = 0.15 #snelheid van aanpassing
         herkenner.dynamic_energy_ratio = 1.5 #versterking van energie drempel
-        herkenner.pause_threshold = 0.55 #tijd in seconden voor pauze
+        herkenner.pause_threshold = 0.8 #tijd in seconden voor pauze
         herkenner.phrase_threshold = 0.2 #minimale tijd voor spraak
-        herkenner.non_speaking_duration = 0.3 #tijd voor en na spraak
+        herkenner.non_speaking_duration = 0.5 #tijd voor en na spraak
         return herkenner
 
 # ============================================================================
@@ -1159,5 +1159,5 @@ def main():
             _window_running = False
             _pending_runs = 0
 
-if __name__ == "__main__": #Zorgt ervoor dat main alleen wordt uitgevoerd als dit script direct wordt uitgevoerd
+if __name__ == "__main__":
     main() 
